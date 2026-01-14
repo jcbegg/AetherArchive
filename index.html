@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Aether Archive</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <!-- Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "react": "https://esm.sh/react@18.2.0",
+                "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+                "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+            }
+        }
+    </script>
+
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050505;
+            color: #e5e5e5;
+        }
+        h1, h2, h3, .font-serif {
+            font-family: 'Cinzel', serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444; 
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #d97706; 
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        @keyframes fade-in {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.2s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useMemo, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            ChevronLeft, ChevronRight, Info, Palette, Maximize2, Edit2, Save, 
+            ArrowUpDown, Flame, BookOpen, Search, ImageOff, Upload, Download,
+            Menu, X, Plus, UserPlus, Users, Link as LinkIcon, ExternalLink,
+            Globe, Brush, Tag, Star, Calendar, Filter, ArrowDownAZ, ArrowUpAZ,
+            FileJson, AlertTriangle, CheckCircle, Trash2
+        } from 'lucide-react';
+
+        // --- MOCK DATA ---
+        
+        const INITIAL_LIBRARY = [
+            {
+                id: "oleg-korolev",
+                name: "Oleg Korolev",
+                born: "1968",
+                origin: "Russia",
+                school: "Moscow Visionary School",
+                technique: "Egg Tempera & Oil Glaze",
+                bio: "A central figure in contemporary Visionary Art, Korolev combines the techniques of the Old Masters with Orthodox Christian mysticism and surrealist imagery.",
+                influences: ["Hieronymus Bosch", "Vrubel", "Pavel Filonov"],
+                relatedArtists: ["H.R. Giger", "Alex Grey"],
+                artworks: [
+                    { id: 1, title: "Golden Fish", year: 1993, medium: "Oil on Canvas", dimensions: "80x120 cm", tags: ["Fantasy", "Symbolism"], description: "An early fantasy work depicting a dream-like aquatic realm.", placeholderHue: "from-amber-700 to-yellow-900", imageUrl: null },
+                    { id: 3, title: "Genesis", year: 1997, medium: "Oil on Canvas", dimensions: "120x195 cm", tags: ["Cosmic", "Origins"], description: "A foundational visionary work depicting the mystical origins of creation.", placeholderHue: "from-blue-900 to-purple-900", imageUrl: null },
+                    { id: 7, title: "St. Paul", year: 2002, medium: "Oil on Canvas", dimensions: "90x130 cm", tags: ["Religious", "Light"], description: "Depicts the blinding vision of Apostle Paul. A intersection of divine light and history.", placeholderHue: "from-red-900 to-orange-700", imageUrl: null },
+                    { id: 14, title: "Hesychast", year: 2007, medium: "Oil on Canvas", dimensions: "90x130 cm", tags: ["Religious", "Meditation"], description: "Dedicated to Hesychasm, the tradition of inner silence.", placeholderHue: "from-sky-900 to-blue-800", imageUrl: null }
+                ]
+            },
+            {
+                id: "hr-giger",
+                name: "H.R. Giger",
+                born: "1940",
+                origin: "Switzerland",
+                school: "Fantastic Realism",
+                technique: "Airbrush",
+                bio: "Swiss painter best known for his 'Biomechanoid' style, merging biological forms with industrial mechanics.",
+                influences: ["Salvador Dali", "Ernst Fuchs"],
+                relatedArtists: ["Oleg Korolev", "Zdzisław Beksiński"],
+                artworks: [
+                    { id: 101, title: "Li I", year: 1974, medium: "Airbrush", dimensions: "200x140 cm", tags: ["Biomech", "Surrealism"], description: "Iconic biomechanical landscape.", placeholderHue: "from-gray-800 to-black", imageUrl: null },
+                    { id: 102, title: "Necronom IV", year: 1976, medium: "Acrylic on Paper", dimensions: "100x150 cm", tags: ["Alien", "Horror"], description: "The primary inspiration for the Alien creature design.", placeholderHue: "from-green-900 to-black", imageUrl: null }
+                ]
+            }
+        ];
+
+        // --- COMPONENTS ---
+
+        const Modal = ({ title, onClose, children }) => (
+            <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-neutral-900 border border-neutral-700 rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto flex flex-col shadow-2xl animate-fade-in">
+                    <div className="flex justify-between items-center p-4 border-b border-neutral-800">
+                        <h3 className="text-xl font-serif text-amber-500">{title}</h3>
+                        <button onClick={onClose} className="p-1 hover:bg-white/10 rounded"><X size={20}/></button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        {children}
+                    </div>
+                </div>
+            </div>
+        );
+
+        const Badge = ({ icon: Icon, label, onClick, active }) => (
+            <button 
+                onClick={onClick}
+                className={`
+                    text-[10px] uppercase tracking-wider px-2 py-1 rounded border transition-all flex items-center gap-1.5
+                    ${active 
+                        ? 'bg-amber-900/40 border-amber-500 text-amber-400' 
+                        : 'bg-neutral-800 border-neutral-700 text-neutral-400 hover:border-neutral-500'}
+                    ${onClick ? 'cursor-pointer' : 'cursor-default'}
+                `}
+            >
+                {Icon && <Icon size={10} />}
+                {label}
+            </button>
+        );
+
+        const ConnectionBadge = ({ name, onClick, isActive }) => (
+            <button 
+                onClick={onClick}
+                className={`
+                    text-[10px] uppercase tracking-wider px-2 py-1 rounded border transition-all flex items-center gap-1.5
+                    ${isActive 
+                        ? 'bg-amber-900/40 border-amber-500 text-amber-400 hover:bg-amber-900/60' 
+                        : 'bg-neutral-800 border-neutral-700 text-neutral-500 hover:border-neutral-500 hover:text-neutral-300 cursor-help'}
+                `}
+                title={isActive ? "Switch to this Artist" : "Search External"}
+            >
+                {isActive ? <LinkIcon size={10} /> : <Search size={10} />}
+                {name}
+            </button>
+        );
+
+        // --- MAIN APP COMPONENT ---
+
+        const VisionaryApp = () => {
+            // STATE: Data
+            const [library, setLibrary] = useState(INITIAL_LIBRARY);
+            const [curatedIds, setCuratedIds] = useState(new Set()); 
+            
+            // STATE: View & Navigation
+            const [viewMode, setViewMode] = useState('artist'); 
+            const [currentArtistId, setCurrentArtistId] = useState(INITIAL_LIBRARY[0]?.id || null);
+            const [sidebarOpen, setSidebarOpen] = useState(false);
+            
+            // STATE: Filtering & Searching (Sidebar)
+            const [activeFilter, setActiveFilter] = useState(null);
+            const [sidebarSearch, setSidebarSearch] = useState("");
+            const [sidebarSort, setSidebarSort] = useState("az"); 
+
+            // STATE: Artist/Gallery View
+            const [currentArtworkIndex, setCurrentArtworkIndex] = useState(0);
+            const [showInfo, setShowInfo] = useState(true);
+            const [sortAscending, setSortAscending] = useState(true);
+            const [imgError, setImgError] = useState(false);
+
+            // STATE: Modals
+            const [isAddArtistOpen, setIsAddArtistOpen] = useState(false);
+            const [isAddArtworkOpen, setIsAddArtworkOpen] = useState(false);
+            const [isEditUrlOpen, setIsEditUrlOpen] = useState(false);
+            const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+            const [editUrlValue, setEditUrlValue] = useState("");
+
+            // STATE: Deletion Logic
+            const [deleteContext, setDeleteContext] = useState(null); // { type: 'artist'|'artwork', id, name, parentId }
+
+            // STATE: Import Logic
+            const [pendingImport, setPendingImport] = useState(null); 
+            const [importConfirmDelete, setImportConfirmDelete] = useState(false);
+
+            // Refs
+            const timelineRef = useRef(null);
+
+            // --- DERIVED DATA CALCULATIONS ---
+
+            const currentArtist = useMemo(() => 
+                library.find(a => a.id === currentArtistId) || library[0] || null, 
+            [library, currentArtistId]);
+
+            const filteredLibrary = useMemo(() => {
+                let result = [...library];
+                if (activeFilter && activeFilter.type !== 'tag') {
+                    result = result.filter(artist => {
+                        if (activeFilter.type === 'school') return artist.school === activeFilter.value;
+                        if (activeFilter.type === 'technique') return artist.technique === activeFilter.value;
+                        return true;
+                    });
+                }
+                if (sidebarSearch) {
+                    const q = sidebarSearch.toLowerCase();
+                    result = result.filter(a => a.name.toLowerCase().includes(q));
+                }
+                result.sort((a, b) => {
+                    if (sidebarSort === 'az') return a.name.localeCompare(b.name);
+                    if (sidebarSort === 'za') return b.name.localeCompare(a.name);
+                    return 0;
+                });
+                return result;
+            }, [library, activeFilter, sidebarSearch, sidebarSort]);
+
+            const allArtworks = useMemo(() => {
+                let all = [];
+                library.forEach(artist => {
+                    artist.artworks.forEach(work => {
+                        all.push({
+                            ...work,
+                            artistName: artist.name,
+                            artistId: artist.id,
+                            uniqueId: `${artist.id}-${work.id}`
+                        });
+                    });
+                });
+                return all.sort((a, b) => a.year - b.year);
+            }, [library]);
+
+            const activePlaylist = useMemo(() => {
+                let list = [];
+                if (!currentArtist && viewMode === 'artist') return [];
+
+                if (viewMode === 'artist') {
+                    list = [...currentArtist.artworks].sort((a, b) => sortAscending ? a.year - b.year : b.year - a.year);
+                    list = list.map(w => ({...w, artistName: currentArtist.name, artistId: currentArtist.id, uniqueId: `${currentArtist.id}-${w.id}`}));
+                } 
+                else if (viewMode === 'timeline') {
+                    if (activeFilter && activeFilter.type === 'tag') {
+                        list = allArtworks.filter(w => w.tags && w.tags.includes(activeFilter.value));
+                    } else {
+                        list = allArtworks;
+                    }
+                } 
+                else if (viewMode === 'exhibition') {
+                    list = allArtworks.filter(w => curatedIds.has(w.uniqueId));
+                }
+                return list;
+            }, [viewMode, currentArtist, allArtworks, activeFilter, curatedIds, sortAscending]);
+
+            // Ensure index stays valid
+            useEffect(() => {
+                if (currentArtworkIndex >= activePlaylist.length) {
+                    setCurrentArtworkIndex(0);
+                }
+            }, [activePlaylist]);
+
+            const currentArt = activePlaylist[currentArtworkIndex] || {};
+
+            // --- EFFECTS ---
+            useEffect(() => { setImgError(false); }, [currentArt.uniqueId]);
+            useEffect(() => {
+                if (timelineRef.current) {
+                    const activeBtn = timelineRef.current.querySelector(`[data-active="true"]`);
+                    if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+            }, [currentArtworkIndex, viewMode]);
+
+            // --- ACTIONS ---
+
+            const handleNext = () => setCurrentArtworkIndex((prev) => (prev + 1) % activePlaylist.length);
+            const handlePrev = () => setCurrentArtworkIndex((prev) => (prev - 1 + activePlaylist.length) % activePlaylist.length);
+
+            const toggleCuration = (uniqueId) => {
+                const newSet = new Set(curatedIds);
+                if (newSet.has(uniqueId)) newSet.delete(uniqueId);
+                else newSet.add(uniqueId);
+                setCuratedIds(newSet);
+            };
+
+            const handleFilter = (type, value) => {
+                setActiveFilter(activeFilter?.value === value ? null : { type, value });
+                if (type === 'tag') setViewMode('timeline'); 
+                else setViewMode('artist'); 
+                setSidebarOpen(false);
+            };
+
+            const clearFilters = () => {
+                setActiveFilter(null);
+                setSidebarSearch("");
+                setViewMode('artist');
+            };
+
+            const handleConnectionClick = (name) => {
+                const target = library.find(a => a.name.toLowerCase() === name.toLowerCase());
+                if (target) {
+                    setCurrentArtistId(target.id);
+                    setViewMode('artist');
+                } else {
+                    window.open(`https://www.google.com/search?q=${name}+artist`, '_blank');
+                }
+            };
+
+            // --- DELETION LOGIC ---
+
+            const confirmDelete = () => {
+                if (!deleteContext) return;
+
+                if (deleteContext.type === 'artist') {
+                    const newLibrary = library.filter(a => a.id !== deleteContext.id);
+                    setLibrary(newLibrary);
+                    if (newLibrary.length > 0) {
+                        setCurrentArtistId(newLibrary[0].id);
+                    } else {
+                        setCurrentArtistId(null);
+                    }
+                } else if (deleteContext.type === 'artwork') {
+                    const targetArtistIndex = library.findIndex(a => a.id === deleteContext.parentId);
+                    if (targetArtistIndex !== -1) {
+                        const artist = library[targetArtistIndex];
+                        const updatedArtist = {
+                            ...artist,
+                            artworks: artist.artworks.filter(w => w.id !== deleteContext.id)
+                        };
+                        const newLibrary = [...library];
+                        newLibrary[targetArtistIndex] = updatedArtist;
+                        setLibrary(newLibrary);
+                    }
+                }
+                setDeleteContext(null);
+            };
+
+            // --- IMPORT / EXPORT LOGIC ---
+
+            const handleFileSelect = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const json = JSON.parse(e.target.result);
+                        if (Array.isArray(json) && json[0].hasOwnProperty('artworks')) {
+                            // Calculate Stats
+                            const artistCount = json.length;
+                            const artworkCount = json.reduce((acc, curr) => acc + (curr.artworks?.length || 0), 0);
+                            setPendingImport({
+                                data: json,
+                                stats: { artists: artistCount, artworks: artworkCount }
+                            });
+                            setImportConfirmDelete(false);
+                        } else {
+                            alert("Invalid Format: JSON must be an array of Artist objects containing 'artworks'.");
+                        }
+                    } catch (err) { console.error(err); alert("Error parsing JSON file."); }
+                };
+                reader.readAsText(file);
+            };
+
+            const handleImportMerge = () => {
+                if (!pendingImport) return;
+                const importedData = pendingImport.data;
+                const newLibrary = [...library];
+                
+                let addedArtists = 0;
+                let addedArtworks = 0;
+
+                importedData.forEach(importedArtist => {
+                    const existingIndex = newLibrary.findIndex(a => a.name.toLowerCase() === importedArtist.name.toLowerCase());
+                    
+                    if (existingIndex === -1) {
+                        newLibrary.push(importedArtist);
+                        addedArtists++;
+                        addedArtworks += importedArtist.artworks.length;
+                    } else {
+                        const existingArtist = newLibrary[existingIndex];
+                        const existingTitles = new Set(existingArtist.artworks.map(w => w.title.toLowerCase()));
+                        const uniqueNewArtworks = importedArtist.artworks.filter(w => !existingTitles.has(w.title.toLowerCase()));
+                        
+                        const processedNewArtworks = uniqueNewArtworks.map((w, idx) => ({
+                            ...w,
+                            id: Date.now() + idx + Math.random()
+                        }));
+
+                        if (processedNewArtworks.length > 0) {
+                            newLibrary[existingIndex] = {
+                                ...existingArtist,
+                                artworks: [...existingArtist.artworks, ...processedNewArtworks].sort((a,b) => a.year - b.year)
+                            };
+                            addedArtworks += processedNewArtworks.length;
+                        }
+                    }
+                });
+
+                setLibrary(newLibrary);
+                alert(`Merge Successful!\nAdded ${addedArtists} new artists.\nAdded ${addedArtworks} new artworks.`);
+                setIsImportModalOpen(false);
+                setPendingImport(null);
+            };
+
+            const handleImportReplace = () => {
+                if (!pendingImport) return;
+                setLibrary(pendingImport.data);
+                setCurrentArtistId(pendingImport.data[0]?.id || null);
+                setCuratedIds(new Set());
+                setViewMode('artist');
+                setIsImportModalOpen(false);
+                setPendingImport(null);
+            };
+
+            const handleExportLibrary = () => {
+                const data = viewMode === 'exhibition' 
+                    ? library.map(a => ({...a, artworks: a.artworks.filter(w => curatedIds.has(`${a.id}-${w.id}`))})).filter(a => a.artworks.length > 0)
+                    : library;
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = viewMode === 'exhibition' ? "my_curated_exhibition.json" : "aether_archive_full.json";
+                link.click();
+            };
+
+            // --- FORM HANDLERS ---
+            
+            const handleAddArtist = (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const newArtist = {
+                    id: formData.get('name').toLowerCase().replace(/[^a-z0-9]/g, '-'),
+                    name: formData.get('name'),
+                    born: formData.get('born'),
+                    origin: formData.get('origin'),
+                    school: formData.get('school'),
+                    technique: formData.get('technique'),
+                    bio: formData.get('bio'),
+                    influences: formData.get('influences').split(',').map(s => s.trim()).filter(s=>s),
+                    relatedArtists: formData.get('related').split(',').map(s => s.trim()).filter(s=>s),
+                    artworks: []
+                };
+                setLibrary([...library, newArtist]);
+                setCurrentArtistId(newArtist.id);
+                setViewMode('artist');
+                setIsAddArtistOpen(false);
+            };
+
+            const handleAddArtwork = (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const newWork = {
+                    id: Date.now(),
+                    title: formData.get('title'),
+                    year: parseInt(formData.get('year')),
+                    medium: formData.get('medium'),
+                    dimensions: formData.get('dimensions'),
+                    description: formData.get('description'),
+                    tags: formData.get('tags').split(',').map(s => s.trim()).filter(s=>s),
+                    placeholderHue: 'from-gray-800 to-neutral-900',
+                    imageUrl: formData.get('imageUrl') || null
+                };
+                const updatedArtist = {
+                    ...currentArtist,
+                    artworks: [...currentArtist.artworks, newWork]
+                };
+                setLibrary(library.map(a => a.id === currentArtistId ? updatedArtist : a));
+                setIsAddArtworkOpen(false);
+            };
+
+            const handleUpdateImageUrl = () => {
+                const targetId = currentArt.id; 
+                const targetArtistId = currentArt.artistId;
+                const artistIndex = library.findIndex(a => a.id === targetArtistId);
+                if (artistIndex === -1) return;
+
+                const updatedArtist = {
+                    ...library[artistIndex],
+                    artworks: library[artistIndex].artworks.map(art => 
+                        art.id === targetId ? { ...art, imageUrl: editUrlValue } : art
+                    )
+                };
+                const newLibrary = [...library];
+                newLibrary[artistIndex] = updatedArtist;
+                setLibrary(newLibrary);
+                setIsEditUrlOpen(false);
+                setImgError(false);
+            };
+
+            // --- RENDER ---
+
+            // 1. EMPTY LIBRARY STATE (Guardrail)
+            if (library.length === 0) {
+                return (
+                    <div className="h-screen w-screen bg-neutral-950 text-neutral-100 flex flex-col items-center justify-center p-8 text-center space-y-6">
+                        <Flame className="text-amber-500 w-16 h-16 animate-pulse" />
+                        <h1 className="text-3xl font-serif">The Archive is Empty</h1>
+                        <p className="text-neutral-500 max-w-md">Your library has been cleared. Start fresh by creating a new artist profile or importing an existing archive.</p>
+                        <div className="flex gap-4">
+                            <button onClick={() => setIsAddArtistOpen(true)} className="px-6 py-3 bg-amber-700 hover:bg-amber-600 rounded font-medium flex items-center gap-2">
+                                <UserPlus size={18}/> Create First Artist
+                            </button>
+                            <label className="px-6 py-3 bg-neutral-800 hover:bg-neutral-700 rounded font-medium cursor-pointer flex items-center gap-2 border border-neutral-700">
+                                <Upload size={18}/> Import Backup
+                                <input type="file" accept=".json" onChange={handleFileSelect} className="hidden" />
+                            </label>
+                        </div>
+                        {/* Modals needed for Empty State */}
+                        {isAddArtistOpen && (
+                             <Modal title="Add New Artist" onClose={() => setIsAddArtistOpen(false)}>
+                                <form onSubmit={handleAddArtist} className="space-y-4">
+                                    <div><label className="text-xs text-neutral-400">Name</label><input required name="name" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                    <button type="submit" className="w-full bg-amber-700 hover:bg-amber-600 text-white py-2 rounded font-medium">Save Profile</button>
+                                </form>
+                            </Modal>
+                        )}
+                        {/* Import Modal logic reuse */}
+                        {pendingImport && (
+                             <Modal title="Import Library Data" onClose={() => setPendingImport(null)}>
+                                <div className="space-y-4">
+                                    <p className="text-white">Found {pendingImport.stats.artists} artists.</p>
+                                    <button onClick={handleImportReplace} className="w-full py-2 bg-green-600 rounded">Restore Library</button>
+                                </div>
+                             </Modal>
+                        )}
+                    </div>
+                )
+            }
+
+            return (
+                <div className="h-screen w-screen bg-neutral-950 text-neutral-100 flex overflow-hidden selection:bg-amber-500/30">
+                    
+                    {/* SIDEBAR */}
+                    <aside className={`
+                        fixed inset-y-0 left-0 z-40 w-72 bg-black/95 border-r border-white/10 backdrop-blur-xl transform transition-transform duration-300
+                        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:relative flex flex-col
+                    `}>
+                        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Flame className="text-amber-500 w-5 h-5" />
+                                <span className="font-serif font-bold tracking-wider">AETHER</span>
+                            </div>
+                            <button onClick={() => setSidebarOpen(false)} className="md:hidden text-neutral-400"><X size={20}/></button>
+                        </div>
+
+                        {/* Mode Selectors */}
+                        <div className="p-4 grid grid-cols-2 gap-2 border-b border-white/10">
+                            <button 
+                                onClick={() => { setViewMode('timeline'); setSidebarOpen(false); }}
+                                className={`p-2 rounded text-xs flex flex-col items-center gap-1 transition-colors ${viewMode === 'timeline' ? 'bg-amber-900/30 text-amber-500 border border-amber-900/50' : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800'}`}
+                            >
+                                <Calendar size={16} /> Global Timeline
+                            </button>
+                            <button 
+                                onClick={() => { setViewMode('exhibition'); setSidebarOpen(false); }}
+                                className={`p-2 rounded text-xs flex flex-col items-center gap-1 transition-colors ${viewMode === 'exhibition' ? 'bg-amber-900/30 text-amber-500 border border-amber-900/50' : 'bg-neutral-900 text-neutral-400 hover:bg-neutral-800'}`}
+                            >
+                                <Star size={16} fill={viewMode === 'exhibition' ? "currentColor" : "none"} /> My Exhibition
+                            </button>
+                        </div>
+                        
+                        {/* Search & Sort */}
+                        <div className="px-4 pt-4 flex gap-2">
+                            <div className="relative flex-1">
+                                <Search size={12} className="absolute left-2.5 top-2.5 text-neutral-500" />
+                                <input 
+                                    type="text"
+                                    value={sidebarSearch}
+                                    onChange={(e) => setSidebarSearch(e.target.value)}
+                                    placeholder="Search library..."
+                                    className="w-full bg-neutral-900 border border-neutral-800 rounded-md py-1.5 pl-8 pr-2 text-xs text-white placeholder-neutral-600 focus:border-amber-500 outline-none"
+                                />
+                            </div>
+                            <button 
+                                onClick={() => setSidebarSort(sidebarSort === 'az' ? 'za' : 'az')}
+                                className="bg-neutral-900 border border-neutral-800 rounded-md px-2 text-neutral-400 hover:text-white hover:border-neutral-600 transition-colors"
+                                title={sidebarSort === 'az' ? "Sort Z-A" : "Sort A-Z"}
+                            >
+                                {sidebarSort === 'az' ? <ArrowDownAZ size={14} /> : <ArrowUpAZ size={14} />}
+                            </button>
+                        </div>
+
+                        {/* Filter Display */}
+                        {activeFilter && activeFilter.type !== 'tag' && (
+                            <div className="px-4 py-2 mt-2 bg-amber-900/10 border-y border-amber-900/20 flex justify-between items-center">
+                                <span className="text-xs text-amber-500 truncate">Filter: {activeFilter.value}</span>
+                                <button onClick={clearFilters} className="text-amber-500 hover:text-white"><X size={12}/></button>
+                            </div>
+                        )}
+
+                        {/* Artist List */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2 scrollbar-thin">
+                            <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-3 ml-2">Artists</h3>
+                            {filteredLibrary.length === 0 ? (
+                                <div className="text-xs text-neutral-600 text-center py-4">No artists match filter.</div>
+                            ) : (
+                                filteredLibrary.map(artist => (
+                                    <button
+                                        key={artist.id}
+                                        onClick={() => { setCurrentArtistId(artist.id); setViewMode('artist'); setSidebarOpen(false); }}
+                                        className={`w-full text-left px-3 py-3 rounded-lg text-sm transition-all border group relative ${
+                                            currentArtistId === artist.id && viewMode === 'artist'
+                                            ? 'bg-neutral-800 border-l-4 border-l-amber-500 border-y-transparent border-r-transparent text-white' 
+                                            : 'border-transparent text-neutral-400 hover:bg-white/5 hover:text-white'
+                                        }`}
+                                    >
+                                        <span className="block font-medium">{artist.name}</span>
+                                        {(artist.school || artist.technique) && (
+                                            <span className="block text-[10px] opacity-50 truncate mt-0.5">
+                                                {artist.school || artist.technique}
+                                            </span>
+                                        )}
+                                    </button>
+                                ))
+                            )}
+                        </div>
+
+                        {/* Action Footer */}
+                        <div className="p-4 border-t border-white/10 space-y-2">
+                            <button onClick={() => setIsAddArtistOpen(true)} className="w-full py-2 flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 rounded text-xs font-medium transition-colors">
+                                <UserPlus size={14} /> Add Artist
+                            </button>
+                            <div className="flex gap-2">
+                                <button onClick={() => setIsImportModalOpen(true)} className="flex-1 py-2 flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded text-xs transition-colors">
+                                    <Upload size={14} /> Import
+                                </button>
+                                <button onClick={handleExportLibrary} className="flex-1 py-2 flex items-center justify-center gap-2 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded text-xs transition-colors">
+                                    <Download size={14} /> Export
+                                </button>
+                            </div>
+                        </div>
+                    </aside>
+
+                    {/* MAIN CONTENT AREA */}
+                    <div className="flex-1 flex flex-col relative min-w-0 bg-neutral-900">
+                        {/* HEADER */}
+                        <header className="h-14 border-b border-white/5 bg-black/40 backdrop-blur flex items-center justify-between px-4 md:px-8 shrink-0 z-20">
+                            <div className="flex items-center gap-4">
+                                <button onClick={() => setSidebarOpen(true)} className="md:hidden text-neutral-400"><Menu/></button>
+                                {viewMode === 'artist' && currentArtist && (
+                                    <div>
+                                        <h1 className="text-lg font-serif text-white tracking-wide">{currentArtist.name}</h1>
+                                        <div className="hidden md:flex gap-3 text-xs text-neutral-500">
+                                            <span>{currentArtist.born}</span>
+                                            {currentArtist.origin && <span className="flex items-center gap-1"><Globe size={10}/> {currentArtist.origin}</span>}
+                                        </div>
+                                    </div>
+                                )}
+                                {viewMode === 'timeline' && (
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="text-amber-500" size={20} />
+                                        <div>
+                                            <h1 className="text-lg font-serif text-white">Global Timeline</h1>
+                                            {activeFilter?.type === 'tag' && <span className="text-xs text-amber-500">Tag: {activeFilter.value}</span>}
+                                        </div>
+                                    </div>
+                                )}
+                                {viewMode === 'exhibition' && (
+                                    <div className="flex items-center gap-2">
+                                        <Star className="text-amber-500" size={20} fill="currentColor" />
+                                        <h1 className="text-lg font-serif text-white">Curated Exhibition</h1>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                {viewMode === 'artist' && (
+                                    <>
+                                        <button onClick={() => setSortAscending(!sortAscending)} className="p-2 text-neutral-400 hover:text-amber-500" title="Sort Year">
+                                            <ArrowUpDown size={18} />
+                                        </button>
+                                        <button onClick={() => setIsAddArtworkOpen(true)} className="flex items-center gap-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">
+                                            <Plus size={14} /> Add Work
+                                        </button>
+                                        {/* DELETE ARTIST BUTTON */}
+                                        <button 
+                                            onClick={() => setDeleteContext({ type: 'artist', id: currentArtist.id, name: currentArtist.name })}
+                                            className="p-2 text-neutral-600 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
+                                            title={`Delete ${currentArtist.name}`}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </>
+                                )}
+                                {viewMode === 'timeline' && activeFilter && (
+                                    <button onClick={clearFilters} className="text-xs text-neutral-400 hover:text-white flex items-center gap-1 bg-neutral-800 px-3 py-1 rounded">
+                                        <X size={12}/> Clear Filter
+                                    </button>
+                                )}
+                            </div>
+                        </header>
+
+                        {/* WORKSPACE */}
+                        <main className="flex-1 relative overflow-hidden flex flex-col md:flex-row">
+                            {activePlaylist.length === 0 ? (
+                                <div className="flex-1 flex flex-col items-center justify-center text-neutral-500 gap-4">
+                                    <Search size={48} strokeWidth={1} />
+                                    <p>No artworks found in this view.</p>
+                                    {viewMode === 'exhibition' && <p className="text-sm">Click the star icon on artworks to add them here.</p>}
+                                    {activeFilter && <button onClick={clearFilters} className="text-amber-500 underline">Clear Filters</button>}
+                                    {viewMode === 'artist' && (
+                                        <button onClick={() => setIsAddArtworkOpen(true)} className="text-amber-500 underline mt-2">Add First Artwork</button>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    {/* ARTWORK DISPLAY */}
+                                    <div className="flex-1 relative flex items-center justify-center p-4 md:p-8 z-10 bg-gradient-to-br from-neutral-900 to-black">
+                                        <div className={`absolute inset-0 bg-gradient-to-br ${currentArt.placeholderHue || 'from-gray-900 to-black'} opacity-10 blur-3xl transition-all duration-1000 z-0`}></div>
+                                        <div className="relative w-full max-w-5xl h-[50vh] md:h-[65vh] flex flex-col items-center justify-center">
+                                            <div className="relative h-full w-full flex items-center justify-center">
+                                                {currentArt.imageUrl && !imgError ? (
+                                                    <img 
+                                                        src={currentArt.imageUrl} 
+                                                        alt={currentArt.title}
+                                                        onError={() => setImgError(true)}
+                                                        className="max-h-full max-w-full object-contain shadow-2xl drop-shadow-2xl"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full border border-white/5 bg-white/5 rounded flex flex-col items-center justify-center text-center p-8">
+                                                        <Palette size={48} strokeWidth={1} className="mb-4 opacity-50"/>
+                                                        <h2 className="text-3xl font-serif italic opacity-80">{currentArt.title}</h2>
+                                                        <p className="text-xs uppercase tracking-widest opacity-40 mt-2">No Image Source</p>
+                                                    </div>
+                                                )}
+                                                <button onClick={handlePrev} className="absolute left-0 md:-left-12 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition-all"><ChevronLeft size={32}/></button>
+                                                <button onClick={handleNext} className="absolute right-0 md:-right-12 top-1/2 -translate-y-1/2 p-3 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition-all"><ChevronRight size={32}/></button>
+                                            </div>
+                                            <div className="absolute bottom-4 right-4 flex gap-2">
+                                                <button 
+                                                    onClick={() => toggleCuration(currentArt.uniqueId)}
+                                                    className={`p-2 backdrop-blur rounded-full border shadow-lg transition-all ${curatedIds.has(currentArt.uniqueId) ? 'bg-amber-500 border-amber-500 text-black' : 'bg-black/50 border-white/10 text-neutral-400 hover:text-amber-400'}`}
+                                                    title={curatedIds.has(currentArt.uniqueId) ? "Remove from Exhibition" : "Add to Exhibition"}
+                                                >
+                                                    <Star size={16} fill={curatedIds.has(currentArt.uniqueId) ? "currentColor" : "none"} />
+                                                </button>
+                                                <button onClick={() => { setEditUrlValue(currentArt.imageUrl || ""); setIsEditUrlOpen(true); }} className="p-2 bg-black/50 backdrop-blur rounded-full border border-white/10 text-neutral-400 hover:text-white hover:bg-white/10">
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <a href={`https://www.google.com/search?tbm=isch&q=${currentArt.artistName}+${currentArt.title}+art`} target="_blank" className="p-2 bg-black/50 backdrop-blur rounded-full border border-white/10 text-neutral-400 hover:text-white hover:bg-white/10">
+                                                    <Search size={16} />
+                                                </a>
+                                                {/* DELETE ARTWORK BUTTON */}
+                                                <button 
+                                                    onClick={() => setDeleteContext({ type: 'artwork', id: currentArt.id, name: currentArt.title, parentId: currentArt.artistId })}
+                                                    className="p-2 bg-black/50 backdrop-blur rounded-full border border-white/10 text-neutral-400 hover:text-red-400 hover:border-red-900/50 hover:bg-red-900/20"
+                                                    title="Delete Artwork"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* INFO PANEL */}
+                                    <div className={`
+                                        absolute bottom-0 left-0 right-0 md:static md:w-80 md:border-l border-white/5 
+                                        bg-neutral-950/95 md:bg-neutral-950 backdrop-blur-xl md:backdrop-blur-none
+                                        p-6 flex flex-col gap-6 overflow-y-auto max-h-[45vh] md:max-h-none z-20
+                                        transition-transform duration-300 shadow-2xl md:shadow-none
+                                        ${showInfo ? 'translate-y-0' : 'translate-y-[88%] md:translate-y-0'}
+                                    `}>
+                                        <button onClick={() => setShowInfo(!showInfo)} className="absolute top-2 right-1/2 translate-x-1/2 md:hidden">
+                                            <div className="w-10 h-1 bg-white/20 rounded-full"></div>
+                                        </button>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-amber-500 text-xs font-bold tracking-widest border border-amber-500/30 px-2 py-0.5 rounded">{currentArt.year}</span>
+                                                {viewMode !== 'artist' && (
+                                                    <button onClick={() => { setCurrentArtistId(currentArt.artistId); setViewMode('artist'); }} className="text-neutral-400 text-xs hover:text-white flex items-center gap-1">
+                                                        by <span className="underline decoration-neutral-700">{currentArt.artistName}</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <h2 className="text-2xl font-serif text-white leading-tight">{currentArt.title}</h2>
+                                            <div className="text-sm text-neutral-500 space-y-1 font-light">
+                                                <p>{currentArt.medium}</p>
+                                                <p>{currentArt.dimensions}</p>
+                                            </div>
+                                            {currentArt.tags && currentArt.tags.length > 0 && (
+                                                <div className="flex flex-wrap gap-2 pt-2">
+                                                    {currentArt.tags.map(tag => (
+                                                        <Badge key={tag} icon={Tag} label={tag} active={activeFilter?.type === 'tag' && activeFilter.value === tag} onClick={() => handleFilter('tag', tag)} />
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <p className="text-sm text-neutral-300 font-light leading-relaxed border-l-2 border-white/10 pl-3">{currentArt.description}</p>
+                                        </div>
+                                        {viewMode === 'artist' && currentArtist && (
+                                            <div className="pt-6 border-t border-white/10 space-y-4">
+                                                <h3 className="text-xs uppercase tracking-widest text-neutral-500 font-bold flex items-center gap-2"><Users size={12}/> Context</h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {currentArtist.school && <Badge icon={Globe} label={currentArtist.school} onClick={() => handleFilter('school', currentArtist.school)} active={activeFilter?.type === 'school' && activeFilter.value === currentArtist.school} />}
+                                                    {currentArtist.technique && <Badge icon={Brush} label={currentArtist.technique} onClick={() => handleFilter('technique', currentArtist.technique)} active={activeFilter?.type === 'technique' && activeFilter.value === currentArtist.technique} />}
+                                                </div>
+                                                <p className="text-xs text-neutral-400 leading-relaxed">{currentArtist.bio}</p>
+                                                <div className="space-y-3 pt-2">
+                                                    {currentArtist.influences && (
+                                                        <div><span className="text-[9px] uppercase text-neutral-600 block mb-1.5 font-bold tracking-wider">Influenced By</span><div className="flex flex-wrap gap-2">{currentArtist.influences.map((inf, i) => <ConnectionBadge key={i} name={inf} isActive={library.some(a => a.name.toLowerCase() === inf.toLowerCase())} onClick={() => handleConnectionClick(inf)} />)}</div></div>
+                                                    )}
+                                                    {currentArtist.relatedArtists && (
+                                                        <div><span className="text-[9px] uppercase text-neutral-600 block mb-1.5 font-bold tracking-wider">Related</span><div className="flex flex-wrap gap-2">{currentArtist.relatedArtists.map((rel, i) => <ConnectionBadge key={i} name={rel} isActive={library.some(a => a.name.toLowerCase() === rel.toLowerCase())} onClick={() => handleConnectionClick(rel)} />)}</div></div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </main>
+
+                        {/* TIMELINE FOOTER */}
+                        {activePlaylist.length > 0 && (
+                            <footer className="h-20 bg-black border-t border-white/5 flex items-center shrink-0 z-20 overflow-hidden relative">
+                                <div ref={timelineRef} className="flex-1 overflow-x-auto hide-scrollbar h-full flex items-center px-4 relative">
+                                    <div className="flex gap-1 mx-auto">
+                                        {activePlaylist.map((art, idx) => (
+                                            <button key={art.uniqueId} data-active={idx === currentArtworkIndex} onClick={() => setCurrentArtworkIndex(idx)} className={`group relative w-10 h-14 flex items-end justify-center pb-2 transition-all duration-300 hover:w-20 hover:bg-white/5 rounded ${idx === currentArtworkIndex ? 'w-24 bg-white/10' : 'opacity-60'}`}>
+                                                <div className={`absolute bottom-0 left-0 right-0 h-1 transition-colors ${idx === currentArtworkIndex ? 'bg-amber-500' : 'bg-neutral-800 group-hover:bg-neutral-600'}`}></div>
+                                                <div className="flex flex-col items-center">
+                                                    <span className={`text-[10px] font-mono mb-1 ${idx === currentArtworkIndex ? 'text-white' : 'text-neutral-500'}`}>{art.year}</span>
+                                                    {viewMode !== 'artist' && idx === currentArtworkIndex && <span className="text-[9px] text-amber-500 truncate max-w-[80px] leading-none">{art.artistName.split(' ')[1]}</span>}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </footer>
+                        )}
+                    </div>
+
+                    {/* --- MODALS --- */}
+
+                    {/* IMPORT MODAL */}
+                    {isImportModalOpen && (
+                        <Modal title="Import Library Data" onClose={() => { setIsImportModalOpen(false); setPendingImport(null); }}>
+                            <div className="space-y-6">
+                                {/* Step 1: File Selection */}
+                                <div className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center transition-all ${pendingImport ? 'border-amber-500/50 bg-amber-900/10' : 'border-neutral-700 hover:border-neutral-500'}`}>
+                                    <FileJson size={32} className={`mb-3 ${pendingImport ? 'text-amber-500' : 'text-neutral-500'}`} />
+                                    {pendingImport ? (
+                                        <div className="animate-fade-in">
+                                            <p className="text-sm text-white font-medium mb-1">File Analyzed Successfully</p>
+                                            <div className="flex gap-4 text-xs text-neutral-400 justify-center mt-2">
+                                                <span className="bg-neutral-900 px-2 py-1 rounded border border-neutral-700">{pendingImport.stats.artists} Artists</span>
+                                                <span className="bg-neutral-900 px-2 py-1 rounded border border-neutral-700">{pendingImport.stats.artworks} Artworks</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <label className="cursor-pointer block">
+                                            <span className="block text-sm font-medium text-white mb-1">Select JSON File</span>
+                                            <span className="block text-xs text-neutral-500 mb-4">Click to browse your device</span>
+                                            <input type="file" accept=".json" onChange={handleFileSelect} className="hidden" />
+                                            <div className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs py-2 px-4 rounded inline-block transition-colors">Browse Files</div>
+                                        </label>
+                                    )}
+                                </div>
+
+                                {/* Step 2: Actions */}
+                                {pendingImport && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                                        {/* Merge Option */}
+                                        <div className="bg-neutral-800/50 p-4 rounded-lg border border-neutral-700">
+                                            <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                                                <Plus size={16} className="text-green-500"/> Merge Data
+                                            </h4>
+                                            <p className="text-xs text-neutral-400 mb-4 h-10">
+                                                Add new artists and artworks to your current library. Duplicates will be skipped.
+                                            </p>
+                                            <button 
+                                                onClick={handleImportMerge}
+                                                className="w-full py-2 bg-green-900/30 hover:bg-green-900/50 text-green-400 border border-green-900 rounded text-xs font-medium transition-all"
+                                            >
+                                                Confirm Merge
+                                            </button>
+                                        </div>
+
+                                        {/* Replace Option */}
+                                        <div className="bg-neutral-800/50 p-4 rounded-lg border border-neutral-700">
+                                            <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                                                <AlertTriangle size={16} className="text-red-500"/> Replace All
+                                            </h4>
+                                            <p className="text-xs text-neutral-400 mb-4 h-10">
+                                                <span className="text-red-400 font-bold">Warning:</span> Completely erases your current library and replaces it with this file.
+                                            </p>
+                                            {importConfirmDelete ? (
+                                                <button 
+                                                    onClick={handleImportReplace}
+                                                    className="w-full py-2 bg-red-600 hover:bg-red-500 text-white rounded text-xs font-bold transition-all animate-pulse"
+                                                >
+                                                    Are you sure? Click to Confirm.
+                                                </button>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => setImportConfirmDelete(true)}
+                                                    className="w-full py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900 rounded text-xs font-medium transition-all"
+                                                >
+                                                    Overwrite Library
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </Modal>
+                    )}
+
+                    {/* DELETE CONFIRMATION MODAL */}
+                    {deleteContext && (
+                        <Modal title={`Delete ${deleteContext.type === 'artist' ? 'Artist' : 'Artwork'}`} onClose={() => setDeleteContext(null)}>
+                            <div className="space-y-4">
+                                <div className="p-4 bg-red-900/20 border border-red-900/50 rounded-lg flex gap-3 items-start">
+                                    <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
+                                    <div className="space-y-1">
+                                        <p className="text-sm font-bold text-red-200">Warning: Permanent Action</p>
+                                        <p className="text-xs text-red-200/70 leading-relaxed">
+                                            {deleteContext.type === 'artist' 
+                                                ? `You are about to delete the artist profile for "${deleteContext.name}". This will remove them and all their artworks from your library.`
+                                                : `You are about to delete the artwork "${deleteContext.name}". This cannot be undone.`
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 justify-end pt-2">
+                                    <button 
+                                        onClick={() => setDeleteContext(null)}
+                                        className="px-4 py-2 rounded text-xs text-neutral-400 hover:text-white"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        onClick={confirmDelete}
+                                        className="px-4 py-2 rounded text-xs font-bold bg-red-600 hover:bg-red-500 text-white flex items-center gap-2"
+                                    >
+                                        <Trash2 size={14} /> Confirm Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
+
+                    {/* Add Artist Modal */}
+                    {isAddArtistOpen && (
+                        <Modal title="Add New Artist" onClose={() => setIsAddArtistOpen(false)}>
+                            <form onSubmit={handleAddArtist} className="space-y-4">
+                                <div><label className="text-xs text-neutral-400">Name</label><input required name="name" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-xs text-neutral-400">Born</label><input name="born" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" placeholder="1970" /></div>
+                                    <div><label className="text-xs text-neutral-400">Origin</label><input name="origin" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" placeholder="Country" /></div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-xs text-neutral-400">School/Movement</label><input name="school" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" placeholder="e.g. Vienna School" /></div>
+                                    <div><label className="text-xs text-neutral-400">Technique</label><input name="technique" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" placeholder="e.g. Mische" /></div>
+                                </div>
+                                <div><label className="text-xs text-neutral-400">Biography</label><textarea name="bio" rows="2" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500"></textarea></div>
+                                <div><label className="text-xs text-neutral-400">Influences (comma sep)</label><input name="influences" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <div><label className="text-xs text-neutral-400">Related Artists (comma sep)</label><input name="related" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <button type="submit" className="w-full bg-amber-700 hover:bg-amber-600 text-white py-2 rounded font-medium">Save Profile</button>
+                            </form>
+                        </Modal>
+                    )}
+
+                    {/* Add Artwork Modal */}
+                    {isAddArtworkOpen && (
+                        <Modal title={`Add Work to ${currentArtist.name}`} onClose={() => setIsAddArtworkOpen(false)}>
+                            <form onSubmit={handleAddArtwork} className="space-y-4">
+                                <div><label className="text-xs text-neutral-400">Title</label><input required name="title" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-xs text-neutral-400">Year</label><input required type="number" name="year" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                    <div><label className="text-xs text-neutral-400">Medium</label><input name="medium" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                </div>
+                                <div><label className="text-xs text-neutral-400">Tags (comma separated)</label><input name="tags" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" placeholder="Surrealism, Dark, Cosmic..." /></div>
+                                <div><label className="text-xs text-neutral-400">Dimensions</label><input name="dimensions" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <div><label className="text-xs text-neutral-400">Description</label><textarea name="description" rows="2" className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500"></textarea></div>
+                                <div><label className="text-xs text-neutral-400">Image URL</label><input name="imageUrl" className="w-full bg-black border border-neutral-700 rounded p-2 text-white font-mono text-xs outline-none focus:border-amber-500" placeholder="https://..." /></div>
+                                <button type="submit" className="w-full bg-amber-700 hover:bg-amber-600 text-white py-2 rounded font-medium">Add Artwork</button>
+                            </form>
+                        </Modal>
+                    )}
+
+                    {/* Edit URL Modal */}
+                    {isEditUrlOpen && (
+                        <Modal title="Edit Image URL" onClose={() => setIsEditUrlOpen(false)}>
+                            <div className="space-y-4">
+                                <p className="text-sm text-neutral-400">Update direct link for "{currentArt.title}".</p>
+                                <input value={editUrlValue} onChange={(e) => setEditUrlValue(e.target.value)} className="w-full bg-black border border-neutral-700 rounded p-3 text-white font-mono text-sm outline-none focus:border-amber-500" placeholder="https://..." />
+                                <div className="flex justify-end gap-2">
+                                    <button onClick={() => setIsEditUrlOpen(false)} className="px-4 py-2 text-neutral-400 hover:text-white">Cancel</button>
+                                    <button onClick={handleUpdateImageUrl} className="px-4 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded">Save</button>
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
+
+                </div>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<VisionaryApp />);
+    </script>
+</body>
+</html>
