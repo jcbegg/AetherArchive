@@ -173,7 +173,7 @@
             const [library, setLibrary] = useState(() => {
                 try {
                     const saved = localStorage.getItem('aether_archive_library_v1');
-                    const parsed = saved ? JSON.parse(saved) : null;
+                    const parsed = (saved && saved !== "undefined") ? JSON.parse(saved) : null;
                     return Array.isArray(parsed) ? parsed : INITIAL_LIBRARY;
                 } catch (e) {
                     console.error("Failed to load library:", e);
@@ -190,10 +190,21 @@
             });
 
             // Persistence Effects
-            useEffect(() => { localStorage.setItem('aether_archive_library_v1', JSON.stringify(library)); }, [library]);
-            useEffect(() => { localStorage.setItem('aether_archive_curated_v1', JSON.stringify(Array.from(curatedIds))); }, [curatedIds]);
-            useEffect(() => { localStorage.setItem('aether_archive_view_mode_v1', viewMode); }, [viewMode]);
-            useEffect(() => { if (currentArtistId) localStorage.setItem('aether_archive_artist_id_v1', currentArtistId); }, [currentArtistId]);
+            const saveToStorage = (key, value) => {
+                try {
+                    localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+                } catch (e) {
+                    console.error(`Failed to save ${key}:`, e);
+                    if (e.name === 'QuotaExceededError') {
+                        alert("Storage Limit Reached! Your changes cannot be saved. Please export your data.");
+                    }
+                }
+            };
+
+            useEffect(() => { saveToStorage('aether_archive_library_v1', library); }, [library]);
+            useEffect(() => { saveToStorage('aether_archive_curated_v1', Array.from(curatedIds)); }, [curatedIds]);
+            useEffect(() => { saveToStorage('aether_archive_view_mode_v1', viewMode); }, [viewMode]);
+            useEffect(() => { if (currentArtistId) saveToStorage('aether_archive_artist_id_v1', currentArtistId); }, [currentArtistId]);
             
             // STATE: View & Navigation
             const [viewMode, setViewMode] = useState(() => localStorage.getItem('aether_archive_view_mode_v1') || 'artist'); 
