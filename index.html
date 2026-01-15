@@ -173,7 +173,8 @@
             const [library, setLibrary] = useState(() => {
                 try {
                     const saved = localStorage.getItem('aether_archive_library_v1');
-                    return saved ? JSON.parse(saved) : INITIAL_LIBRARY;
+                    const parsed = saved ? JSON.parse(saved) : null;
+                    return Array.isArray(parsed) ? parsed : INITIAL_LIBRARY;
                 } catch (e) {
                     console.error("Failed to load library:", e);
                     return INITIAL_LIBRARY;
@@ -191,10 +192,15 @@
             // Persistence Effects
             useEffect(() => { localStorage.setItem('aether_archive_library_v1', JSON.stringify(library)); }, [library]);
             useEffect(() => { localStorage.setItem('aether_archive_curated_v1', JSON.stringify(Array.from(curatedIds))); }, [curatedIds]);
+            useEffect(() => { localStorage.setItem('aether_archive_view_mode_v1', viewMode); }, [viewMode]);
+            useEffect(() => { if (currentArtistId) localStorage.setItem('aether_archive_artist_id_v1', currentArtistId); }, [currentArtistId]);
             
             // STATE: View & Navigation
-            const [viewMode, setViewMode] = useState('artist'); 
-            const [currentArtistId, setCurrentArtistId] = useState(library[0]?.id || null);
+            const [viewMode, setViewMode] = useState(() => localStorage.getItem('aether_archive_view_mode_v1') || 'artist'); 
+            const [currentArtistId, setCurrentArtistId] = useState(() => {
+                const savedId = localStorage.getItem('aether_archive_artist_id_v1');
+                return (savedId && library.find(a => a.id === savedId)) ? savedId : (library[0]?.id || null);
+            });
             const [sidebarOpen, setSidebarOpen] = useState(false);
             
             // STATE: Filtering & Searching (Sidebar)
