@@ -243,9 +243,9 @@
             // STATE: Modals
             const [isAddArtistOpen, setIsAddArtistOpen] = useState(false);
             const [isAddArtworkOpen, setIsAddArtworkOpen] = useState(false);
-            const [isEditUrlOpen, setIsEditUrlOpen] = useState(false);
+            const [isEditArtistOpen, setIsEditArtistOpen] = useState(false);
+            const [isEditArtworkOpen, setIsEditArtworkOpen] = useState(false);
             const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-            const [editUrlValue, setEditUrlValue] = useState("");
 
             // STATE: Deletion Logic
             const [deleteContext, setDeleteContext] = useState(null); // { type: 'artist'|'artwork', id, name, parentId }
@@ -552,23 +552,51 @@
                 setIsAddArtworkOpen(false);
             };
 
-            const handleUpdateImageUrl = () => {
-                const targetId = currentArt.id; 
-                const targetArtistId = currentArt.artistId;
-                const artistIndex = library.findIndex(a => a.id === targetArtistId);
+            const handleEditArtist = (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const updatedArtist = {
+                    ...currentArtist,
+                    name: formData.get('name'),
+                    born: formData.get('born'),
+                    origin: formData.get('origin'),
+                    school: formData.get('school'),
+                    technique: formData.get('technique'),
+                    bio: formData.get('bio'),
+                    influences: formData.get('influences').split(',').map(s => s.trim()).filter(s=>s),
+                    relatedArtists: formData.get('related').split(',').map(s => s.trim()).filter(s=>s),
+                };
+                setLibrary(library.map(a => a.id === currentArtist.id ? updatedArtist : a));
+                setIsEditArtistOpen(false);
+            };
+
+            const handleEditArtwork = (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const artistIndex = library.findIndex(a => a.id === currentArt.artistId);
                 if (artistIndex === -1) return;
+
+                const cleanWork = {
+                    id: currentArt.id,
+                    title: formData.get('title'),
+                    year: parseInt(formData.get('year')),
+                    medium: formData.get('medium'),
+                    dimensions: formData.get('dimensions'),
+                    description: formData.get('description'),
+                    tags: formData.get('tags').split(',').map(s => s.trim()).filter(s=>s),
+                    placeholderHue: currentArt.placeholderHue,
+                    imageUrl: formData.get('imageUrl') || null
+                };
 
                 const updatedArtist = {
                     ...library[artistIndex],
-                    artworks: library[artistIndex].artworks.map(art => 
-                        art.id === targetId ? { ...art, imageUrl: editUrlValue } : art
-                    )
+                    artworks: library[artistIndex].artworks.map(w => w.id === currentArt.id ? cleanWork : w)
                 };
+                
                 const newLibrary = [...library];
                 newLibrary[artistIndex] = updatedArtist;
                 setLibrary(newLibrary);
-                setIsEditUrlOpen(false);
-                setImgError(false);
+                setIsEditArtworkOpen(false);
             };
 
             // --- RENDER ---
@@ -756,6 +784,14 @@
                                         <button onClick={() => setIsAddArtworkOpen(true)} className="flex items-center gap-2 bg-amber-700 hover:bg-amber-600 text-white px-3 py-1.5 rounded text-xs font-medium transition-colors">
                                             <Plus size={14} /> Add Work
                                         </button>
+                                        {/* EDIT ARTIST BUTTON */}
+                                        <button 
+                                            onClick={() => setIsEditArtistOpen(true)}
+                                            className="p-2 text-neutral-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+                                            title={`Edit ${currentArtist.name}`}
+                                        >
+                                            <Edit2 size={18} />
+                                        </button>
                                         {/* DELETE ARTIST BUTTON */}
                                         <button 
                                             onClick={() => setDeleteContext({ type: 'artist', id: currentArtist.id, name: currentArtist.name })}
@@ -818,7 +854,7 @@
                                                 >
                                                     <Star size={16} fill={curatedIds.has(currentArt.uniqueId) ? "currentColor" : "none"} />
                                                 </button>
-                                                <button onClick={() => { setEditUrlValue(currentArt.imageUrl || ""); setIsEditUrlOpen(true); }} className="p-2 bg-black/50 backdrop-blur rounded-full border border-white/10 text-neutral-400 hover:text-white hover:bg-white/10">
+                                                <button onClick={() => setIsEditArtworkOpen(true)} className="p-2 bg-black/50 backdrop-blur rounded-full border border-white/10 text-neutral-400 hover:text-white hover:bg-white/10" title="Edit Artwork Info">
                                                     <Edit2 size={16} />
                                                 </button>
                                                 <a href={`https://www.google.com/search?tbm=isch&q=${currentArt.artistName}+${currentArt.title}+art`} target="_blank" className="p-2 bg-black/50 backdrop-blur rounded-full border border-white/10 text-neutral-400 hover:text-white hover:bg-white/10">
@@ -1062,17 +1098,42 @@
                         </Modal>
                     )}
 
-                    {/* Edit URL Modal */}
-                    {isEditUrlOpen && (
-                        <Modal title="Edit Image URL" onClose={() => setIsEditUrlOpen(false)}>
-                            <div className="space-y-4">
-                                <p className="text-sm text-neutral-400">Update direct link for "{currentArt.title}".</p>
-                                <input value={editUrlValue} onChange={(e) => setEditUrlValue(e.target.value)} className="w-full bg-black border border-neutral-700 rounded p-3 text-white font-mono text-sm outline-none focus:border-amber-500" placeholder="https://..." />
-                                <div className="flex justify-end gap-2">
-                                    <button onClick={() => setIsEditUrlOpen(false)} className="px-4 py-2 text-neutral-400 hover:text-white">Cancel</button>
-                                    <button onClick={handleUpdateImageUrl} className="px-4 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded">Save</button>
+                    {/* Edit Artist Modal */}
+                    {isEditArtistOpen && (
+                        <Modal title="Edit Artist Profile" onClose={() => setIsEditArtistOpen(false)}>
+                            <form onSubmit={handleEditArtist} className="space-y-4">
+                                <div><label className="text-xs text-neutral-400">Name</label><input required name="name" defaultValue={currentArtist.name} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-xs text-neutral-400">Born</label><input name="born" defaultValue={currentArtist.born} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                    <div><label className="text-xs text-neutral-400">Origin</label><input name="origin" defaultValue={currentArtist.origin} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
                                 </div>
-                            </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-xs text-neutral-400">School/Movement</label><input name="school" defaultValue={currentArtist.school} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                    <div><label className="text-xs text-neutral-400">Technique</label><input name="technique" defaultValue={currentArtist.technique} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                </div>
+                                <div><label className="text-xs text-neutral-400">Biography</label><textarea name="bio" rows="4" defaultValue={currentArtist.bio} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500"></textarea></div>
+                                <div><label className="text-xs text-neutral-400">Influences (comma sep)</label><input name="influences" defaultValue={currentArtist.influences?.join(', ')} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <div><label className="text-xs text-neutral-400">Related Artists (comma sep)</label><input name="related" defaultValue={currentArtist.relatedArtists?.join(', ')} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <button type="submit" className="w-full bg-amber-700 hover:bg-amber-600 text-white py-2 rounded font-medium">Save Changes</button>
+                            </form>
+                        </Modal>
+                    )}
+
+                    {/* Edit Artwork Modal */}
+                    {isEditArtworkOpen && (
+                        <Modal title="Edit Artwork Details" onClose={() => setIsEditArtworkOpen(false)}>
+                            <form onSubmit={handleEditArtwork} className="space-y-4">
+                                <div><label className="text-xs text-neutral-400">Title</label><input required name="title" defaultValue={currentArt.title} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-xs text-neutral-400">Year</label><input required type="number" name="year" defaultValue={currentArt.year} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                    <div><label className="text-xs text-neutral-400">Medium</label><input name="medium" defaultValue={currentArt.medium} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                </div>
+                                <div><label className="text-xs text-neutral-400">Tags (comma separated)</label><input name="tags" defaultValue={currentArt.tags?.join(', ')} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <div><label className="text-xs text-neutral-400">Dimensions</label><input name="dimensions" defaultValue={currentArt.dimensions} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500" /></div>
+                                <div><label className="text-xs text-neutral-400">Description</label><textarea name="description" rows="4" defaultValue={currentArt.description} className="w-full bg-black border border-neutral-700 rounded p-2 text-white outline-none focus:border-amber-500"></textarea></div>
+                                <div><label className="text-xs text-neutral-400">Image URL</label><input name="imageUrl" defaultValue={currentArt.imageUrl} className="w-full bg-black border border-neutral-700 rounded p-2 text-white font-mono text-xs outline-none focus:border-amber-500" placeholder="https://..." /></div>
+                                <button type="submit" className="w-full bg-amber-700 hover:bg-amber-600 text-white py-2 rounded font-medium">Save Changes</button>
+                            </form>
                         </Modal>
                     )}
 
