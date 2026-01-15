@@ -170,12 +170,31 @@
 
         const VisionaryApp = () => {
             // STATE: Data
-            const [library, setLibrary] = useState(INITIAL_LIBRARY);
-            const [curatedIds, setCuratedIds] = useState(new Set()); 
+            const [library, setLibrary] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('aether_archive_library_v1');
+                    return saved ? JSON.parse(saved) : INITIAL_LIBRARY;
+                } catch (e) {
+                    console.error("Failed to load library:", e);
+                    return INITIAL_LIBRARY;
+                }
+            });
+            const [curatedIds, setCuratedIds] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('aether_archive_curated_v1');
+                    return saved ? new Set(JSON.parse(saved)) : new Set();
+                } catch (e) {
+                    return new Set();
+                }
+            });
+
+            // Persistence Effects
+            useEffect(() => { localStorage.setItem('aether_archive_library_v1', JSON.stringify(library)); }, [library]);
+            useEffect(() => { localStorage.setItem('aether_archive_curated_v1', JSON.stringify(Array.from(curatedIds))); }, [curatedIds]);
             
             // STATE: View & Navigation
             const [viewMode, setViewMode] = useState('artist'); 
-            const [currentArtistId, setCurrentArtistId] = useState(INITIAL_LIBRARY[0]?.id || null);
+            const [currentArtistId, setCurrentArtistId] = useState(library[0]?.id || null);
             const [sidebarOpen, setSidebarOpen] = useState(false);
             
             // STATE: Filtering & Searching (Sidebar)
