@@ -169,25 +169,37 @@
         // --- MAIN APP COMPONENT ---
 
         const VisionaryApp = () => {
+            // --- INITIALIZATION HELPER ---
+            // Loads all data at once to ensure consistency, similar to ReadQuest
+            const loadInitialState = () => {
+                try {
+                    // 1. Try loading unified v2 data
+                    const saved = localStorage.getItem('aether_archive_data_v2');
+                    if (saved && saved !== "undefined") {
+                        return JSON.parse(saved);
+                    }
+                    // 2. Fallback: Try migration from v1 keys
+                    const v1Lib = localStorage.getItem('aether_archive_library_v1');
+                    if (v1Lib) {
+                        return {
+                            library: JSON.parse(v1Lib),
+                            curatedIds: JSON.parse(localStorage.getItem('aether_archive_curated_v1') || '[]'),
+                            viewMode: localStorage.getItem('aether_archive_view_mode_v1') || 'artist',
+                            currentArtistId: localStorage.getItem('aether_archive_artist_id_v1') || null
+                        };
+                    }
+                } catch (e) {
+                    console.error("Failed to load state:", e);
+                }
+                return null;
+            };
+
+            // Load once on mount
+            const initialState = useMemo(() => loadInitialState(), []);
+
             // STATE: Data
-            const [library, setLibrary] = useState(() => {
-                try {
-                    const saved = localStorage.getItem('aether_archive_library_v1');
-                    const parsed = (saved && saved !== "undefined") ? JSON.parse(saved) : null;
-                    return Array.isArray(parsed) ? parsed : INITIAL_LIBRARY;
-                } catch (e) {
-                    console.error("Failed to load library:", e);
-                    return INITIAL_LIBRARY;
-                }
-            });
-            const [curatedIds, setCuratedIds] = useState(() => {
-                try {
-                    const saved = localStorage.getItem('aether_archive_curated_v1');
-                    return saved ? new Set(JSON.parse(saved)) : new Set();
-                } catch (e) {
-                    return new Set();
-                }
-            });
+            const [library, setLibrary] = useState(initialState?.library || INITIAL_LIBRARY);
+            const [curatedIds, setCuratedIds] = useState(new Set(initialState?.curatedIds || []));
 
             // Persistence Effects
             const saveToStorage = (key, value) => {
@@ -201,17 +213,20 @@
                 }
             };
 
-            useEffect(() => { saveToStorage('aether_archive_library_v1', library); }, [library]);
-            useEffect(() => { saveToStorage('aether_archive_curated_v1', Array.from(curatedIds)); }, [curatedIds]);
-            useEffect(() => { saveToStorage('aether_archive_view_mode_v1', viewMode); }, [viewMode]);
-            useEffect(() => { if (currentArtistId) saveToStorage('aether_archive_artist_id_v1', currentArtistId); }, [currentArtistId]);
+            // Unified Save Effect (Debounced slightly by React's nature)
+            useEffect(() => {
+                const data = {
+                    library,
+                    curatedIds: Array.from(curatedIds),
+                    viewMode,
+                    currentArtistId
+                };
+                saveToStorage('aether_archive_data_v2', data);
+            }, [library, curatedIds, viewMode, currentArtistId]);
             
             // STATE: View & Navigation
-            const [viewMode, setViewMode] = useState(() => localStorage.getItem('aether_archive_view_mode_v1') || 'artist'); 
-            const [currentArtistId, setCurrentArtistId] = useState(() => {
-                const savedId = localStorage.getItem('aether_archive_artist_id_v1');
-                return (savedId && library.find(a => a.id === savedId)) ? savedId : (library[0]?.id || null);
-            });
+            const [viewMode, setViewMode] = useState(initialState?.viewMode || 'artist'); 
+            const [currentArtistId, setCurrentArtistId] = useState(initialState?.currentArtistId || library[0]?.id || null);
             const [sidebarOpen, setSidebarOpen] = useState(false);
             
             // STATE: Filtering & Searching (Sidebar)
